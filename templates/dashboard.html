@@ -1,16 +1,105 @@
 <!DOCTYPE html>
-<html lang="pt-br"><head><meta charset="UTF-8"><title>Dashboard</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"></head>
-<body><div class="container py-5"><h2>Bem-vindo, {{ user }}</h2>
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Dashboard</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <a href="{{ url_for('generate_template') }}" class="btn btn-outline-primary me-2">
-            <i class="bi bi-file-earmark-excel"></i> Gerar Modelo Excel
-        </a>
-        <a href="{{ url_for('upload') }}" class="btn btn-primary">
-            <i class="bi bi-cloud-upload"></i> Upload
-        </a>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gerador SQL GLPI 10</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+</head>
+<body>
+    <div class="container py-5">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{{ url_for('dashboard') }}">Gerador SQL GLPI 10</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h2>Bem-vindo, {{ session.username }}</h2>
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">Dashboard</h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <a href="{{ url_for('generate_template') }}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-file-earmark-excel"></i> Gerar Modelo Excel
+                </a>
+                <a href="{{ url_for('upload') }}" class="btn btn-primary">
+                    <i class="bi bi-cloud-upload"></i> Upload
+                </a>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Arquivos Enviados</h5>
+            </div>
+            <div class="card-body">
+                {% if files %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome do Arquivo</th>
+                                <th>Tamanho</th>
+                                <th>Data de Criação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for file in files %}
+                            <tr>
+                                <td>{{ file.name }}</td>
+                                <td>{{ (file.size / 1024)|round(2) }} KB</td>
+                                <td>{{ file.created }}</td>
+                                <td>
+                                    <a href="{{ url_for('export', filename=file.name) }}" class="btn btn-sm btn-primary">
+                                        <i class="bi bi-code-square"></i> Gerar SQL
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> Nenhum arquivo enviado ainda. 
+                    <a href="{{ url_for('upload') }}">Clique aqui para fazer upload</a> ou 
+                    <a href="{{ url_for('generate_template') }}">gere um modelo</a> para começar.
+                </div>
+                {% endif %}
+            </div>
+        </div>
     </div>
-</div>
-<a href="/logout" class="btn btn-danger">Sair</a></div></body></html>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

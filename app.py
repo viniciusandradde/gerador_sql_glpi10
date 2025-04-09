@@ -6,6 +6,7 @@ import io
 from dotenv import load_dotenv
 import logging
 from logging.handlers import RotatingFileHandler
+import uuid
 
 # Load environment variables
 load_dotenv()
@@ -111,14 +112,14 @@ def upload():
         
         if file and file.filename.endswith('.xlsx'):
             # Save the file
-            filename = f"glpi10_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            filename = f"catalogo_servicos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
             file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(file_path)
             
             # Validate Excel file
             try:
                 excel_file = pd.ExcelFile(file_path)
-                required_sheets = ['regras_sla', 'criterios_sla', 'acoes_sla', 'regras_grupo', 'criterios_grupo', 'acoes_grupo']
+                required_sheets = ['catalogo_servicos']
                 missing_sheets = [sheet for sheet in required_sheets if sheet not in excel_file.sheet_names]
                 
                 if missing_sheets:
@@ -173,12 +174,9 @@ def export_download(filename):
     try:
         # Get module selection from query parameters
         modules = {
-            'regras_sla': request.args.get('regras_sla', '1') == '1',
-            'criterios_sla': request.args.get('criterios_sla', '1') == '1',
-            'acoes_sla': request.args.get('acoes_sla', '1') == '1',
-            'regras_grupo': request.args.get('regras_grupo', '1') == '1',
-            'criterios_grupo': request.args.get('criterios_grupo', '1') == '1',
-            'acoes_grupo': request.args.get('acoes_grupo', '1') == '1',
+            'categorias': request.args.get('categorias', '1') == '1',
+            'slas': request.args.get('slas', '1') == '1',
+            'regras_atribuicao': request.args.get('regras_atribuicao', '1') == '1',
         }
         
         # Generate SQL from Excel file with module selection
@@ -203,177 +201,32 @@ def export_download(filename):
         flash(f'Error generating SQL: {str(e)}', 'danger')
         return redirect(url_for('dashboard'))
 
-def generate_sql(excel_path, modules=None, return_sections=False):
-    """Generate SQL statements from Excel file"""
-    if modules is None:
-        modules = {
-            'regras_sla': True,
-            'criterios_sla': True,
-            'acoes_sla': True,
-            'regras_grupo': True,
-            'criterios_grupo': True,
-            'acoes_grupo': True,
-        }
-    
-    sql_parts = []
-    sql_sections = {}
-    
-    # Add header with timestamp
-    header = f"""-- GLPI 10 SQL Script
--- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
--- Generator: GLPI 10 SQL Generator
-
-"""
-    sql_parts.append(header)
-    sql_sections['header'] = header
-    
-    # Read Excel sheets
-    excel_file = pd.ExcelFile(excel_path)
-    
-    # Process regras_sla sheet
-    if 'regras_sla' in excel_file.sheet_names and modules['regras_sla']:
-        df = pd.read_excel(excel_file, 'regras_sla')
-        if not df.empty:
-            section = "\n-- SLA Rules\n"
-            section += "INSERT INTO `glpi_rules` (`id`, `name`, `description`, `match`, `is_active`, `sub_type`, `ranking`, `uuid`) VALUES\n"
-            
-            rows = []
-            for index, row in df.iterrows():
-                rows.append(f"({row['id']}, '{row['name']}', '{row['description']}', '{row['match']}', {row['is_active']}, '{row['sub_type']}', {row['ranking']}, '{row['uuid']}')")
-            
-            section += ",\n".join(rows) + ";\n"
-            sql_parts.append(section)
-            sql_sections['regras_sla'] = section
-    
-    # Process criterios_sla sheet
-    if 'criterios_sla' in excel_file.sheet_names and modules['criterios_sla']:
-        df = pd.read_excel(excel_file, 'criterios_sla')
-        if not df.empty:
-            section = "\n-- SLA Criteria\n"
-            section += "INSERT INTO `glpi_rulecriterias` (`id`, `rules_id`, `criteria`, `condition`, `pattern`) VALUES\n"
-            
-            rows = []
-            for index, row in df.iterrows():
-                rows.append(f"({row['id']}, {row['rules_id']}, '{row['criteria']}', {row['condition']}, '{row['pattern']}')")
-            
-            section += ",\n".join(rows) + ";\n"
-            sql_parts.append(section)
-            sql_sections['criterios_sla'] = section
-    
-    # Process acoes_sla sheet
-    if 'acoes_sla' in excel_file.sheet_names and modules['acoes_sla']:
-        df = pd.read_excel(excel_file, 'acoes_sla')
-        if not df.empty:
-            section = "\n-- SLA Actions\n"
-            section += "INSERT INTO `glpi_ruleactions` (`id`, `rules_id`, `action_type`, `field`, `value`) VALUES\n"
-            
-            rows = []
-            for index, row in df.iterrows():
-                rows.append(f"({row['id']}, {row['rules_id']}, '{row['action_type']}', '{row['field']}', '{row['value']}')")
-            
-            section += ",\n".join(rows) + ";\n"
-            sql_parts.append(section)
-            sql_sections['acoes_sla'] = section
-    
-    # Process regras_grupo sheet
-    if 'regras_grupo' in excel_file.sheet_names and modules['regras_grupo']:
-        df = pd.read_excel(excel_file, 'regras_grupo')
-        if not df.empty:
-            section = "\n-- Group Rules\n"
-            section += "INSERT INTO `glpi_rules` (`id`, `name`, `description`, `match`, `is_active`, `sub_type`, `ranking`, `uuid`) VALUES\n"
-            
-            rows = []
-            for index, row in df.iterrows():
-                rows.append(f"({row['id']}, '{row['name']}', '{row['description']}', '{row['match']}', {row['is_active']}, '{row['sub_type']}', {row['ranking']}, '{row['uuid']}')")
-            
-            section += ",\n".join(rows) + ";\n"
-            sql_parts.append(section)
-            sql_sections['regras_grupo'] = section
-    
-    # Process criterios_grupo sheet
-    if 'criterios_grupo' in excel_file.sheet_names and modules['criterios_grupo']:
-        df = pd.read_excel(excel_file, 'criterios_grupo')
-        if not df.empty:
-            section = "\n-- Group Criteria\n"
-            section += "INSERT INTO `glpi_rulecriterias` (`id`, `rules_id`, `criteria`, `condition`, `pattern`) VALUES\n"
-            
-            rows = []
-            for index, row in df.iterrows():
-                rows.append(f"({row['id']}, {row['rules_id']}, '{row['criteria']}', {row['condition']}, '{row['pattern']}')")
-            
-            section += ",\n".join(rows) + ";\n"
-            sql_parts.append(section)
-            sql_sections['criterios_grupo'] = section
-    
-    # Process acoes_grupo sheet
-    if 'acoes_grupo' in excel_file.sheet_names and modules['acoes_grupo']:
-        df = pd.read_excel(excel_file, 'acoes_grupo')
-        if not df.empty:
-            section = "\n-- Group Actions\n"
-            section += "INSERT INTO `glpi_ruleactions` (`id`, `rules_id`, `action_type`, `field`, `value`) VALUES\n"
-            
-            rows = []
-            for index, row in df.iterrows():
-                rows.append(f"({row['id']}, {row['rules_id']}, '{row['action_type']}', '{row['field']}', '{row['value']}')")
-            
-            section += ",\n".join(rows) + ";\n"
-            sql_parts.append(section)
-            sql_sections['acoes_grupo'] = section
-    
-    # Combine all SQL parts
-    sql_content = "".join(sql_parts)
-    
-    if return_sections:
-        return sql_content, sql_sections
-    else:
-        return sql_content
-
 @app.route('/generate_template', methods=['GET'])
 @login_required
 def generate_template():
     try:
         # Create output path for the template
-        template_filename = f"glpi10_template_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+        template_filename = f"catalogo_servicos_template_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
         template_path = os.path.join(app.config['UPLOAD_FOLDER'], template_filename)
         
         # Create a Pandas Excel writer
         writer = pd.ExcelWriter(template_path, engine='xlsxwriter')
         
-        # Create regras_sla sheet
-        regras_sla_columns = ['id', 'name', 'description', 'match', 'is_active', 'sub_type', 'ranking', 'uuid']
-        regras_sla_df = pd.DataFrame(columns=regras_sla_columns)
-        regras_sla_df.loc[0] = [1, 'Example SLA Rule', 'Description of SLA rule', 'AND', 1, 'RuleTicket', 1, 'unique-uuid-1']
-        regras_sla_df.to_excel(writer, sheet_name='regras_sla', index=False)
+        # Create catalogo_servicos sheet
+        catalogo_columns = ['Categoria', 'ID da Categoria', 'SLA', 'ID do SLA', 'Nome do Grupo', 'ID do Grupo']
+        catalogo_df = pd.DataFrame(columns=catalogo_columns)
         
-        # Create criterios_sla sheet
-        criterios_sla_columns = ['id', 'rules_id', 'criteria', 'condition', 'pattern']
-        criterios_sla_df = pd.DataFrame(columns=criterios_sla_columns)
-        criterios_sla_df.loc[0] = [1, 1, 'itilcategories_id', 6, '1']
-        criterios_sla_df.to_excel(writer, sheet_name='criterios_sla', index=False)
+        # Add example data
+        example_data = [
+            ['Comunicação e Conectividade > Conectividade de Internet > Conectividade de Internet > Bloqueio de Acesso a Sites', 10, '16 horas', 8, 'Segurança da Informação', 2],
+            ['Comunicação e Conectividade > Conectividade de Internet > Falha de acesso', 12, '04 horas', 12, 'Suporte N1', 6],
+            ['Comunicação e Conectividade > Conectividade de Internet > Liberação de Acesso a Sites', 15, '08 horas', 10, 'Segurança da Informação', 2]
+        ]
         
-        # Create acoes_sla sheet
-        acoes_sla_columns = ['id', 'rules_id', 'action_type', 'field', 'value']
-        acoes_sla_df = pd.DataFrame(columns=acoes_sla_columns)
-        acoes_sla_df.loc[0] = [1, 1, 'assign', 'slas_id', '1']
-        acoes_sla_df.to_excel(writer, sheet_name='acoes_sla', index=False)
-        
-        # Create regras_grupo sheet
-        regras_grupo_columns = ['id', 'name', 'description', 'match', 'is_active', 'sub_type', 'ranking', 'uuid']
-        regras_grupo_df = pd.DataFrame(columns=regras_grupo_columns)
-        regras_grupo_df.loc[0] = [1, 'Example Group Rule', 'Description of group rule', 'AND', 1, 'RuleTicket', 1, 'unique-uuid-2']
-        regras_grupo_df.to_excel(writer, sheet_name='regras_grupo', index=False)
-        
-        # Create criterios_grupo sheet
-        criterios_grupo_columns = ['id', 'rules_id', 'criteria', 'condition', 'pattern']
-        criterios_grupo_df = pd.DataFrame(columns=criterios_grupo_columns)
-        criterios_grupo_df.loc[0] = [1, 1, 'itilcategories_id', 6, '1']
-        criterios_grupo_df.to_excel(writer, sheet_name='criterios_grupo', index=False)
-        
-        # Create acoes_grupo sheet
-        acoes_grupo_columns = ['id', 'rules_id', 'action_type', 'field', 'value']
-        acoes_grupo_df = pd.DataFrame(columns=acoes_grupo_columns)
-        acoes_grupo_df.loc[0] = [1, 1, 'assign', 'groups_id', '1']
-        acoes_grupo_df.to_excel(writer, sheet_name='acoes_grupo', index=False)
+        for i, row in enumerate(example_data):
+            catalogo_df.loc[i] = row
+            
+        catalogo_df.to_excel(writer, sheet_name='catalogo_servicos', index=False)
         
         # Save the Excel file
         writer.close()
@@ -393,6 +246,149 @@ def generate_template():
         logger.error(f"Error creating template: {str(e)}")
         flash(f'Error creating template: {str(e)}', 'danger')
         return redirect(url_for('dashboard'))
+
+def generate_sql(excel_path, modules=None, return_sections=False):
+    """Generate SQL statements from Excel file for GLPI catalog"""
+    if modules is None:
+        modules = {
+            'categorias': True,
+            'slas': True,
+            'regras_atribuicao': True,
+        }
+    
+    sql_parts = []
+    sql_sections = {}
+    
+    # Add header with timestamp
+    header = f"""-- GLPI 10 SQL Script - Catálogo de Serviços
+-- Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+-- Generator: GLPI 10 SQL Generator
+
+"""
+    sql_parts.append(header)
+    sql_sections['header'] = header
+    
+    # Read Excel sheet
+    try:
+        df = pd.read_excel(excel_path, 'catalogo_servicos')
+        
+        # Process categories
+        if modules['categorias'] and not df.empty:
+            section = "\n-- Categorias de Serviços\n"
+            
+            # Get unique categories
+            categories = df[['Categoria', 'ID da Categoria']].drop_duplicates()
+            
+            if not categories.empty:
+                section += "-- Inserção de categorias no GLPI\n"
+                section += "INSERT INTO `glpi_itilcategories` (`id`, `name`, `completename`, `comment`, `level`, `knowbaseitemcategories_id`, `users_id`, `groups_id`, `ancestors_cache`, `sons_cache`, `is_helpdeskvisible`, `tickettemplates_id_demand`, `is_incident`, `is_request`, `is_problem`, `is_change`, `date_mod`, `date_creation`) VALUES\n"
+                
+                category_rows = []
+                for _, row in categories.iterrows():
+                    # Split the category path
+                    cat_parts = row['Categoria'].split(' > ')
+                    cat_name = cat_parts[-1]
+                    completename = row['Categoria']
+                    level = len(cat_parts)
+                    
+                    # Generate a random UUID for each category
+                    random_uuid = str(uuid.uuid4())
+                    
+                    category_rows.append(f"({row['ID da Categoria']}, '{cat_name}', '{completename}', '', {level}, 0, 0, 0, '', '', 1, 0, 1, 1, 1, 0, NOW(), NOW())")
+                
+                section += ",\n".join(category_rows) + ";\n"
+                sql_parts.append(section)
+                sql_sections['categorias'] = section
+        
+        # Process SLAs
+        if modules['slas'] and not df.empty:
+            section = "\n-- SLAs\n"
+            
+            # Get unique SLAs
+            slas = df[['SLA', 'ID do SLA']].drop_duplicates()
+            
+            if not slas.empty:
+                section += "-- Inserção de SLAs no GLPI\n"
+                section += "INSERT INTO `glpi_slas` (`id`, `name`, `entities_id`, `is_recursive`, `type`, `comment`, `number_time`, `calendars_id`, `date_mod`, `definition_time`, `end_of_working_day`, `date_creation`, `slms_id`) VALUES\n"
+                
+                sla_rows = []
+                for _, row in slas.iterrows():
+                    # Parse the SLA time
+                    sla_time = row['SLA']
+                    time_value = ''.join(filter(str.isdigit, sla_time))
+                    time_unit = 'hour' if 'hora' in sla_time.lower() else 'minute'
+                    
+                    sla_rows.append(f"({row['ID do SLA']}, '{row['SLA']}', 0, 1, 1, '', {time_value}, 1, NOW(), '{time_unit}', 0, NOW(), 1)")
+                
+                section += ",\n".join(sla_rows) + ";\n"
+                sql_parts.append(section)
+                sql_sections['slas'] = section
+        
+        # Process assignment rules
+        if modules['regras_atribuicao'] and not df.empty:
+            section = "\n-- Regras de Atribuição\n"
+            
+            # Create rules for each category
+            rules_section = "-- Inserção de regras de atribuição no GLPI\n"
+            rules_section += "INSERT INTO `glpi_rules` (`id`, `name`, `description`, `match`, `is_active`, `sub_type`, `ranking`, `uuid`, `condition`, `date_mod`, `date_creation`) VALUES\n"
+            
+            criteria_section = "\n-- Critérios para regras de atribuição\n"
+            criteria_section += "INSERT INTO `glpi_rulecriterias` (`id`, `rules_id`, `criteria`, `condition`, `pattern`) VALUES\n"
+            
+            actions_section = "\n-- Ações para regras de atribuição\n"
+            actions_section += "INSERT INTO `glpi_ruleactions` (`id`, `rules_id`, `action_type`, `field`, `value`) VALUES\n"
+            
+            rule_rows = []
+            criteria_rows = []
+            action_rows = []
+            
+            rule_id_start = 1000  # Starting ID for rules
+            criteria_id_start = 2000  # Starting ID for criteria
+            action_id_start = 3000  # Starting ID for actions
+            
+            for _, row in df.iterrows():
+                # Create rule
+                rule_name = f"Atribuição automática - {row['Categoria']}"
+                rule_id = rule_id_start
+                rule_uuid = str(uuid.uuid4())
+                
+                rule_rows.append(f"({rule_id}, '{rule_name}', 'Regra criada automaticamente para atribuição de tickets', 'AND', 1, 'RuleTicket', {rule_id_start - 999}, '{rule_uuid}', 0, NOW(), NOW())")
+                
+                # Create criteria for category
+                criteria_id = criteria_id_start
+                criteria_rows.append(f"({criteria_id}, {rule_id}, 'itilcategories_id', 0, '{row['ID da Categoria']}')")
+                
+                # Create actions for SLA and Group assignment
+                action_id_sla = action_id_start
+                action_id_group = action_id_start + 1
+                
+                action_rows.append(f"({action_id_sla}, {rule_id}, 'assign', 'slas_id', '{row['ID do SLA']}')")
+                action_rows.append(f"({action_id_group}, {rule_id}, 'assign', 'groups_id', '{row['ID do Grupo']}')")
+                
+                # Increment IDs
+                rule_id_start += 1
+                criteria_id_start += 1
+                action_id_start += 2
+            
+            rules_section += ",\n".join(rule_rows) + ";\n"
+            criteria_section += ",\n".join(criteria_rows) + ";\n"
+            actions_section += ",\n".join(action_rows) + ";\n"
+            
+            section += rules_section + criteria_section + actions_section
+            sql_parts.append(section)
+            sql_sections['regras_atribuicao'] = section
+    
+    except Exception as e:
+        logger.error(f"Error generating SQL: {str(e)}")
+        raise
+    
+    # Combine all SQL parts
+    sql_content = "".join(sql_parts)
+    
+    if return_sections:
+        return sql_content, sql_sections
+    else:
+        return sql_content
 
 if __name__ == '__main__':
     logger.info("Starting GLPI 10 SQL Generator application")

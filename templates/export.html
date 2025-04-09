@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Exportar SQL - Gerador SQL GLPI 10</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        pre {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-5">
+        <nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="{{ url_for('dashboard') }}">Gerador SQL GLPI 10</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('upload') }}">Upload</a>
+                        </li>
+                    </ul>
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <h2>Exportar SQL para GLPI 10</h2>
+        
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Arquivo: {{ filename }}</h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('export_download', filename=filename) }}" method="GET">
+                    <div class="mb-3">
+                        <h5>Selecione os módulos para incluir no SQL:</h5>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="categorias" name="categorias" value="1" checked>
+                            <label class="form-check-label" for="categorias">Categorias</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="slas" name="slas" value="1" checked>
+                            <label class="form-check-label" for="slas">SLAs</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="regras_atribuicao" name="regras_atribuicao" value="1" checked>
+                            <label class="form-check-label" for="regras_atribuicao">Regras de Atribuição</label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-download"></i> Baixar SQL
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Pré-visualização do SQL</h5>
+            </div>
+            <div class="card-body">
+                <ul class="nav nav-tabs" id="sqlTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="all-tab" data-bs-toggle="tab" data-bs-target="#all" type="button" role="tab">Completo</button>
+                    </li>
+                    {% if 'categorias' in sql_sections %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="categorias-tab" data-bs-toggle="tab" data-bs-target="#categorias" type="button" role="tab">Categorias</button>
+                    </li>
+                    {% endif %}
+                    {% if 'slas' in sql_sections %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="slas-tab" data-bs-toggle="tab" data-bs-target="#slas" type="button" role="tab">SLAs</button>
+                    </li>
+                    {% endif %}
+                    {% if 'regras_atribuicao' in sql_sections %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="regras-tab" data-bs-toggle="tab" data-bs-target="#regras" type="button" role="tab">Regras de Atribuição</button>
+                    </li>
+                    {% endif %}
+                </ul>
+                <div class="tab-content mt-3" id="sqlTabsContent">
+                    <div class="tab-pane fade show active" id="all" role="tabpanel">
+                        <pre>{{ sql_content }}</pre>
+                    </div>
+                    {% if 'categorias' in sql_sections %}
+                    <div class="tab-pane fade" id="categorias" role="tabpanel">
+                        <pre>{{ sql_sections['header'] }}{{ sql_sections['categorias'] }}</pre>
+                    </div>
+                    {% endif %}
+                    {% if 'slas' in sql_sections %}
+                    <div class="tab-pane fade" id="slas" role="tabpanel">
+                        <pre>{{ sql_sections['header'] }}{{ sql_sections['slas'] }}</pre>
+                    </div>
+                    {% endif %}
+                    {% if 'regras_atribuicao' in sql_sections %}
+                    <div class="tab-pane fade" id="regras" role="tabpanel">
+                        <pre>{{ sql_sections['header'] }}{{ sql_sections['regras_atribuicao'] }}</pre>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
