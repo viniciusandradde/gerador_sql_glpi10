@@ -24,8 +24,8 @@ var/
 venv/
 ENV/
 
-# Environment variables
-.env
+# Remova ou comente a linha abaixo para incluir o .env no Git
+# .env
 
 # Uploaded files
 uploads/*
