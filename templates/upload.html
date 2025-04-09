@@ -2,6 +2,24 @@
 <html lang="pt-br"><head><meta charset="UTF-8"><title>Upload</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"></head>
 <body><div class="container py-5"><h2>Upload de Planilha</h2>
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Upload de Arquivo Excel</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <h5><i class="bi bi-info-circle"></i> Formato Requerido</h5>
+            <p>O arquivo Excel deve conter as seguintes abas:</p>
+            <ul>
+                <li><strong>regras_sla</strong>: Regras de SLA</li>
+                <li><strong>criterios_sla</strong>: Critérios para regras de SLA</li>
+                <li><strong>acoes_sla</strong>: Ações para regras de SLA</li>
+                <li><strong>regras_grupo</strong>: Regras de grupo</li>
+                <li><strong>criterios_grupo</strong>: Critérios para regras de grupo</li>
+                <li><strong>acoes_grupo</strong>: Ações para regras de grupo</li>
+            </ul>
+            <p>Não tem um modelo? <a href="{{ url_for('generate_template') }}">Clique aqui para baixar um modelo</a>.</p>
+        </div>
 <form method="POST" enctype="multipart/form-data"><div class="mb-3">
 <input type="file" name="file" class="form-control" accept=".xlsx" required></div>
 <button type="submit" class="btn btn-primary">Enviar</button></form></div></body></html>
