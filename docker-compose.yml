@@ -11,8 +11,6 @@ services:
     env_file:
       - .env
     restart: unless-stopped
-    networks:
-      - app-network
     logging:
       driver: "json-file"
       options:
