@@ -1,9 +1,19 @@
-version: '3.9'
+version: '3'
+
 services:
-  glpi-sql-v2:
+  web:
     build: .
     ports:
       - "5000:5000"
     volumes:
-      - .:/app
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
     restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: gerador_sql_glpi10_default
+    external: true
