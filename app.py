@@ -211,6 +211,7 @@ def generate_template():
         
         # Create a Pandas Excel writer
         writer = pd.ExcelWriter(template_path, engine='xlsxwriter')
+        workbook = writer.book
         
         # Create catalogo_servicos sheet
         catalogo_columns = ['Categoria', 'ID da Categoria', 'SLA', 'ID do SLA', 'Nome do Grupo', 'ID do Grupo']
@@ -227,6 +228,88 @@ def generate_template():
             catalogo_df.loc[i] = row
             
         catalogo_df.to_excel(writer, sheet_name='catalogo_servicos', index=False)
+        
+        # Format the catalogo_servicos sheet
+        worksheet = writer.sheets['catalogo_servicos']
+        header_format = workbook.add_format({'bold': True, 'bg_color': '#D9E1F2', 'border': 1})
+        
+        for col_num, value in enumerate(catalogo_df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+            worksheet.set_column(col_num, col_num, 20)
+        
+        # Create organizacao_categorias sheet
+        org_cat_columns = ['Categoria Original', 'Categoria nível 1', 'Categoria nível 2', 'Categoria nível 3']
+        org_cat_df = pd.DataFrame(columns=org_cat_columns)
+        
+        # Add example data for category organization
+        org_cat_data = [
+            ['Comunicação e Conectividade > Conectividade de Internet > Bloqueio de Acesso a Sites', 
+             'Comunicação e Conectividade', 'Conectividade de Internet', 'Bloqueio de Acesso a Sites'],
+            ['Comunicação e Conectividade > Conectividade de Internet > Falha de acesso', 
+             'Comunicação e Conectividade', 'Conectividade de Internet', 'Falha de acesso'],
+            ['Comunicação e Conectividade > Serviço de VPN > Configuração de VPN', 
+             'Comunicação e Conectividade', 'Serviço de VPN', 'Configuração de VPN']
+        ]
+        
+        for i, row in enumerate(org_cat_data):
+            org_cat_df.loc[i] = row
+            
+        org_cat_df.to_excel(writer, sheet_name='organizacao_categorias', index=False)
+        
+        # Format the organizacao_categorias sheet
+        worksheet = writer.sheets['organizacao_categorias']
+        
+        # Add header formatting
+        for col_num, value in enumerate(org_cat_df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+            worksheet.set_column(col_num, col_num, 30)
+        
+        # Add instructions to the sheet
+        instruction_format = workbook.add_format({'text_wrap': True, 'valign': 'top'})
+        worksheet.merge_range('A15:D15', 'Instruções:', workbook.add_format({'bold': True}))
+        instructions = [
+            '1. Cole suas categorias na coluna A',
+            '2. Utilize "Dados > Texto para colunas" no Excel para separar o texto usando ">" como delimitador',
+            '3. Use a função "=ARRUMAR()" para remover espaços extras',
+            '4. Use "=PRI.MAIUSCULA()" para padronizar o texto com primeiras letras maiúsculas'
+        ]
+        for i, instruction in enumerate(instructions):
+            worksheet.write(15+i, 0, instruction, instruction_format)
+            worksheet.merge_range(f'A{15+i+1}:D{15+i+1}', instruction, instruction_format)
+        
+        # Create regras_categorizacao sheet
+        regras_cat_columns = ['id', 'entities_id', 'sub_type', 'ranking', 'name', 'description', 'match', 'is_active', 'comment', 'date_mod', 'is_recursive', 'uuid', 'condition']
+        regras_cat_df = pd.DataFrame(columns=regras_cat_columns)
+        
+        # Add example data for rules
+        regras_cat_data = [
+            [1001, 0, 'RuleTicket', 1, 'Regra Categoria - Bloqueio de Acesso', 'Atribuição automática para categoria Bloqueio de Acesso', 'AND', 1, '', 'NOW()', 1, 'unique-uuid-1', 0],
+            [1002, 0, 'RuleTicket', 2, 'Regra Categoria - Falha de acesso', 'Atribuição automática para categoria Falha de acesso', 'AND', 1, '', 'NOW()', 1, 'unique-uuid-2', 0]
+        ]
+        
+        for i, row in enumerate(regras_cat_data):
+            regras_cat_df.loc[i] = row
+            
+        regras_cat_df.to_excel(writer, sheet_name='regras_categorizacao', index=False)
+        
+        # Format the regras_categorizacao sheet
+        worksheet = writer.sheets['regras_categorizacao']
+        
+        # Add header formatting
+        for col_num, value in enumerate(regras_cat_df.columns.values):
+            worksheet.write(0, col_num, value, header_format)
+            worksheet.set_column(col_num, col_num, 15)
+        
+        # Add instructions
+        worksheet.merge_range('A10:M10', 'Instruções:', workbook.add_format({'bold': True}))
+        rule_instructions = [
+            '1. Verifique o último ID de regra válido com a consulta: "SELECT id FROM glpi_rules ORDER BY id DESC LIMIT 1"',
+            '2. Defina o ID da entidade no campo entities_id (0 para todas as entidades)',
+            '3. Defina o ranking (ordem de execução) das regras',
+            '4. Cada regra deve ter um UUID único'
+        ]
+        for i, instruction in enumerate(rule_instructions):
+            worksheet.merge_range(f'A{11+i}:M{11+i}', instruction, instruction_format)
         
         # Save the Excel file
         writer.close()
@@ -270,7 +353,19 @@ def generate_sql(excel_path, modules=None, return_sections=False):
     
     # Read Excel sheet
     try:
-        df = pd.read_excel(excel_path, 'catalogo_servicos')
+        # Check if the file exists
+        if not os.path.exists(excel_path):
+            raise FileNotFoundError(f"Excel file not found: {excel_path}")
+        
+        # Read the main catalog sheet
+        excel_file = pd.ExcelFile(excel_path)
+        
+        # Check if required sheets exist
+        required_sheet = 'catalogo_servicos'
+        if required_sheet not in excel_file.sheet_names:
+            raise ValueError(f"Required sheet '{required_sheet}' not found in Excel file")
+        
+        df = pd.read_excel(excel_path, required_sheet)
         
         # Process categories
         if modules['categorias'] and not df.empty:
@@ -328,6 +423,9 @@ def generate_sql(excel_path, modules=None, return_sections=False):
         if modules['regras_atribuicao'] and not df.empty:
             section = "\n-- Regras de Atribuição\n"
             
+            # Check if regras_categorizacao sheet exists
+            has_rules_sheet = 'regras_categorizacao' in excel_file.sheet_names
+            
             # Create rules for each category
             rules_section = "-- Inserção de regras de atribuição no GLPI\n"
             rules_section += "INSERT INTO `glpi_rules` (`id`, `name`, `description`, `match`, `is_active`, `sub_type`, `ranking`, `uuid`, `condition`, `date_mod`, `date_creation`) VALUES\n"
@@ -342,7 +440,13 @@ def generate_sql(excel_path, modules=None, return_sections=False):
             criteria_rows = []
             action_rows = []
             
-            rule_id_start = 1000  # Starting ID for rules
+            # If we have a rules sheet, use it for rule IDs
+            if has_rules_sheet:
+                rules_df = pd.read_excel(excel_path, 'regras_categorizacao')
+                rule_id_start = rules_df['id'].min() if not rules_df.empty else 1000
+            else:
+                rule_id_start = 1000  # Default starting ID for rules
+                
             criteria_id_start = 2000  # Starting ID for criteria
             action_id_start = 3000  # Starting ID for actions
             

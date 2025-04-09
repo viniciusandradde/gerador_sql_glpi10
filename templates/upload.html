@@ -53,9 +53,9 @@
             <div class="card-body">
                 <div class="alert alert-info">
                     <h5><i class="bi bi-info-circle"></i> Formato Requerido</h5>
-                    <p>O arquivo Excel deve conter a seguinte aba:</p>
+                    <p>O arquivo Excel deve conter as seguintes abas:</p>
                     <ul>
-                        <li><strong>catalogo_servicos</strong>: Dados do catálogo de serviços com as colunas:
+                        <li><strong>catalogo_servicos</strong> (Obrigatória): Dados do catálogo de serviços com as colunas:
                             <ul>
                                 <li>Categoria</li>
                                 <li>ID da Categoria</li>
@@ -65,6 +65,15 @@
                                 <li>ID do Grupo</li>
                             </ul>
                         </li>
+                        <li><strong>organizacao_categorias</strong> (Opcional): Organização das categorias em níveis:
+                            <ul>
+                                <li>Categoria Original</li>
+                                <li>Categoria nível 1</li>
+                                <li>Categoria nível 2</li>
+                                <li>Categoria nível 3</li>
+                            </ul>
+                        </li>
+                        <li><strong>regras_categorizacao</strong> (Opcional): Configuração de regras de categorização</li>
                     </ul>
                     <p>Não tem um modelo? <a href="{{ url_for('generate_template') }}">Clique aqui para baixar um modelo</a>.</p>
                 </div>
