@@ -18,12 +18,9 @@ services:
         max-file: "3"
     environment:
       - PYTHONUNBUFFERED=1
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.glpi-sql.rule=Host(`localhost`)"
-      - "traefik.http.services.glpi-sql.loadbalancer.server.port=5000"
+    networks:
+      - glpi_network
 
 networks:
-  app-network:
-    name: gerador_sql_glpi10_default
-    external: true
+  glpi_network:
+    driver: bridge
